@@ -8,19 +8,20 @@
 - 호출 경로: `NodeBase.AttachNode(...)` → `PerformNativeAttach` → `UpdateParentAddon` → `RaptureAtkUnitManager.GetAddonByNode`
 - 재현 지점: GuideWindow, Cabinet/Crystallize 버튼 생성
 - 조치: KamiToolKit 네이티브 노드 부착 제거, ImGui로 대체
-- 커밋: `imgui-migration-kr-crash-fix` 브랜치, 5개 커밋
+- 커밋: `main` 브랜치, 5개 커밋
 
 ### 2. clib AtkUnitBase.IsAddonReady(string) → GetAddonByName
 - 크래시 덤프: `crash-20260821001443.tspack`
 - 호출 경로: `CommandService+<>c.<Build>b__10_0()` → `clib.Extensions.AtkUnitBaseExtensions.IsAddonReady` → `RaptureAtkUnitManager.GetAddonByName` (`ffxiv_dx11.exe+67C9A0`)
 - 트리거: AutoDuty IPC `EntrustAll` → `/glamourlog store` 커맨드의 Cabinet 준비 상태 체크
 - KamiToolKit 의존: 없음
-- 조치: `NativeAddon.IsReady()` 헬퍼로 대체 — `Svc.GameGui.GetAddonByName<T>()` + `AtkUnitBase.IsReady`(비트필드 읽기)
-- 파일: `GlamourLog/Services/NativeAddon.cs`, `imgui-migration-kr-crash-fix` 브랜치
+- 조치: `NativeAddon.IsReady()` 헬퍼로 대체 — `Svc.GameGui.GetAddonByName<T>()` + `AtkUnitBase.IsVisible`/`IsReady`(비트필드 읽기) + `AtkUnitBase.IsFullyLoaded()`([VirtualFunction], vtable 호출)
+- 판정 기준: clib 원본과 동일(`IsVisible && IsReady && IsFullyLoaded()`) — clib.dll 디컴파일로 확인
+- 파일: `GlamourLog/Services/NativeAddon.cs`, `main` 브랜치
 
 ### 공통 패턴
-- 크래시 함수: FFXIVClientStructs 시그니처 스캔 기반 네이티브 호출, `RaptureAtkUnitManager` 계열
-- 안전 확인된 경로: `Svc.GameGui.GetAddonByName`(Dalamud 자체 구현), 단순 필드 읽기(`IsReady` 등)
+- 크래시 함수: FFXIVClientStructs `[MemberFunction]`(시그니처 스캔) 기반 네이티브 호출, `RaptureAtkUnitManager` 계열
+- 안전 확인된 경로: `Svc.GameGui.GetAddonByName`(Dalamud 자체 구현), 단순 필드 읽기(`IsReady`/`IsVisible` 등), `[VirtualFunction]`(vtable 호출, 예: `IsFullyLoaded`) — 시그니처 스캔이 아니라서 위험도 별개
 
 ## KR 클라이언트 지원 체계
 
